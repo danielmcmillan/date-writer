@@ -25,7 +25,10 @@ def main(args):
     output_dir = args[1]
     input_files = args[2:]
 
-    for filename in input_files:
+    count = len(input_files)
+
+    for i, filename in enumerate(input_files):
+        print('Processing file {} out of {}'.format(i + 1, count))
         process_file(filename, output_dir)
 
 def random_filename():
