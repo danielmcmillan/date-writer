@@ -1,1 +1,2 @@
 pillow==4.3
+numpy==1.13
