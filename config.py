@@ -14,20 +14,20 @@ randomise_filename = True
 ##
 
 # Location of date text, specified as thousandths of the reference dimension
-text_x = 10
-text_y = 800
+text_x = 20
+text_y = 15
 
 # Truetype font file
 font_file = 'font.ttf'
 
 # Font size, specified as thousandths of the reference dimension
-font_size = 100
+font_size = 60
 
 # Format for date
 date_format = '%B %-d, %Y'
 
 # Text colour mode (0 for bitwise xor, 1 for automatic black/white, 2 for manual colour)
-text_color_mode = 0
+text_color_mode = 1
 
 # Brightness threshold for automatic black/white text colour mode
 colour_threshold = 128

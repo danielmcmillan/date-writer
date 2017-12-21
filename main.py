@@ -55,9 +55,27 @@ def draw_text_xor(image, text, location, font):
     return Image.fromarray(xor_array)
 
 def draw_text_black_white(image, text, location, font, threshold):
-    pass
-    # size = font.getsize(text)
-    # Average value in the text rectangle, compare to threshold
+    # Get average value in the text rectangle
+    size = font.getsize(text)
+    grey = image.convert("L").load()
+    average = 0
+
+    for x in range(location[0], location[0] + size[0]):
+        for y in range(location[1], location[1] + size[1]):
+            average += grey[x, y]
+    average /= size[0] * size[1]
+
+    # Determine colour based on average and threshold
+    if average < threshold:
+        colour = (255,) * 3
+    else:
+        colour = (0,) * 3
+    
+    # Draw text
+    draw = ImageDraw.Draw(image)
+    draw.text(location, text, font=font, fill=colour)
+
+    return image
 
 def draw_text_manual(image, text, location, font, colour):
     pass
@@ -74,10 +92,15 @@ def process_file(input_filename, output_dir):
     # Draw text
     text = get_date_text(image)
     if text:
-        location = (config.text_x * dimension_scale, config.text_y * dimension_scale)
+        location = (int(config.text_x * dimension_scale), int(config.text_y * dimension_scale))
         font = ImageFont.truetype(config.font_file, int(config.font_size * dimension_scale))
 
-        image = draw_text_xor(image, text, location, font)
+        if config.text_color_mode == 0:
+            image = draw_text_xor(image, text, location, font)
+        elif config.text_color_mode == 1:
+            image = draw_text_black_white(image, text, location, font, config.colour_threshold)
+        else:
+            raise NotImplementedError('Text colour mode not implemented')
 
     # Write the output
     image.save(output_filename)
