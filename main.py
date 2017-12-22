@@ -29,7 +29,10 @@ def main(args):
 
     for i, filename in enumerate(input_files):
         print('Processing file {} out of {}'.format(i + 1, count))
-        process_file(filename, output_dir)
+        try:
+            process_file(filename, output_dir)
+        except OSError:
+            print('Processing image {} ({}) failed.'.format(i + 1, filename))
 
 def random_filename():
     """Create a random filename with extension matching the given file name"""
@@ -38,10 +41,12 @@ def random_filename():
 def get_date_text(image):
     """Get date taken as a string from the given image's metadata, or None if it is not available"""
     if hasattr(image, '_getexif'):
-        date_exif = image._getexif()[36867]
-        if date_exif:
-            date_taken = datetime.strptime(date_exif, '%Y:%m:%d %H:%M:%S')
-            return date_taken.strftime(config.date_format)
+        exif = image._getexif()
+        if exif is not None:
+            date_exif = image._getexif().get(36867, None)
+            if date_exif:
+                date_taken = datetime.strptime(date_exif, '%Y:%m:%d %H:%M:%S')
+                return date_taken.strftime(config.date_format)
     return None
 
 def draw_text_xor(image, text, location, font):
@@ -73,7 +78,7 @@ def draw_text_black_white(image, text, location, font, threshold):
         colour = (255,) * 3
     else:
         colour = (0,) * 3
-    
+
     # Draw text
     draw = ImageDraw.Draw(image)
     draw.text(location, text, font=font, fill=colour)
