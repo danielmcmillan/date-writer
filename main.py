@@ -32,18 +32,17 @@ def main(args):
         print('Processing file {} out of {}'.format(i + 1, count))
         try:
             process_file(filename, output_dir)
-        except OSError:
-            print('Processing image {} ({}) failed.'.format(i + 1, filename))
+        except Exception as err:
+            print('Processing image {} ({}) failed: {}'.format(i + 1, filename, err))
 
 def get_exif_value(image, key):
-    if hasattr(image, '_getexif'):
-        for exif_code in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[exif_code]==key:
-                exif = image._getexif()
-                if exif is not None:
-                    edict = dict(exif.items())
-                    if (exif_code in edict):
-                        return edict[exif_code]
+    exif = image._getexif() if hasattr(image, '_getexif') else None
+    if exif is not None:
+        exif_values = dict(exif)
+        for exif_code, exif_key in ExifTags.TAGS.items():
+            val = exif_values.get(exif_code)
+            if exif_key == key and val is not None:
+                return val
 
     return None
 
@@ -119,14 +118,15 @@ def process_file(input_filename, output_dir):
     if config.skip_existing and os.path.exists(output_filename):
         return
 
-    with Image.open(input_filename) as image:
+    with Image.open(input_filename) as original:
+        image = original
         if config.rotate_images:
             image = rotate_image(image)
 
         dimension_scale = image.height / 1000
 
         # Draw text
-        text = get_date_text(image)
+        text = get_date_text(original)
         if text:
             location = (int(config.text_x * dimension_scale), int(config.text_y * dimension_scale))
             font = ImageFont.truetype(config.font_file, int(config.font_size * dimension_scale))
