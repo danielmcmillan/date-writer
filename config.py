@@ -9,6 +9,12 @@ output_format = 'jpg'
 # Whether to randomise the output filename
 randomise_filename = True
 
+# Whether to rotate images based on orientation metadata
+rotate_images = True
+
+# Whether to skip processing images when the output filename already exists
+skip_existing = True
+
 ##
 # Date text
 ##

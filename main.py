@@ -2,8 +2,9 @@
 
 import sys
 import os
-import uuid
-from PIL import Image, ImageDraw, ImageFont, ImageChops
+import random
+import string
+from PIL import Image, ImageDraw, ImageFont, ImageChops, ExifTags
 from datetime import datetime
 import numpy as np
 
@@ -34,19 +35,30 @@ def main(args):
         except OSError:
             print('Processing image {} ({}) failed.'.format(i + 1, filename))
 
-def random_filename():
+def get_exif_value(image, key):
+    if hasattr(image, '_getexif'):
+        for exif_code in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[exif_code]==key:
+                exif = image._getexif()
+                if exif is not None:
+                    edict = dict(exif.items())
+                    if (exif_code in edict):
+                        return edict[exif_code]
+
+    return None
+
+def random_filename(original):
     """Create a random filename with extension matching the given file name"""
-    return str(uuid.uuid4())
+    random.seed(original)
+    random_part = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+    return '{}_{}'.format(random_part, original)
 
 def get_date_text(image):
     """Get date taken as a string from the given image's metadata, or None if it is not available"""
-    if hasattr(image, '_getexif'):
-        exif = image._getexif()
-        if exif is not None:
-            date_exif = image._getexif().get(36867, None)
-            if date_exif:
-                date_taken = datetime.strptime(date_exif, '%Y:%m:%d %H:%M:%S')
-                return date_taken.strftime(config.date_format)
+    date_exif = get_exif_value(image, 'DateTimeOriginal')
+    if date_exif:
+        date_taken = datetime.strptime(date_exif, '%Y:%m:%d %H:%M:%S')
+        return date_taken.strftime(config.date_format)
     return None
 
 def draw_text_xor(image, text, location, font):
@@ -88,30 +100,48 @@ def draw_text_black_white(image, text, location, font, threshold):
 def draw_text_manual(image, text, location, font, colour):
     pass
 
+def rotate_image(image):
+    orientation = get_exif_value(image, 'Orientation')
+    if orientation == 3:
+        return image.rotate(180, expand=True)
+    elif orientation == 6:
+        return image.rotate(270, expand=True)
+    elif orientation == 8:
+        return image.rotate(90, expand=True)
+    return image
+
 def process_file(input_filename, output_dir):
     """Processes given file and writes output to the given directory"""
     image_name = os.path.splitext(os.path.basename(input_filename))[0]
-    output_name = image_name if not config.randomise_filename else random_filename()
+    output_name = image_name if not config.randomise_filename else random_filename(image_name)
     output_filename = os.path.join(output_dir, '{}.{}'.format(output_name, config.output_format))
 
-    image = Image.open(input_filename)
-    dimension_scale = image.height / 1000
+    if config.skip_existing and os.path.exists(output_filename):
+        return
 
-    # Draw text
-    text = get_date_text(image)
-    if text:
-        location = (int(config.text_x * dimension_scale), int(config.text_y * dimension_scale))
-        font = ImageFont.truetype(config.font_file, int(config.font_size * dimension_scale))
+    with Image.open(input_filename) as image:
+        if config.rotate_images:
+            image = rotate_image(image)
 
-        if config.text_color_mode == 0:
-            image = draw_text_xor(image, text, location, font)
-        elif config.text_color_mode == 1:
-            image = draw_text_black_white(image, text, location, font, config.colour_threshold)
+        dimension_scale = image.height / 1000
+
+        # Draw text
+        text = get_date_text(image)
+        if text:
+            location = (int(config.text_x * dimension_scale), int(config.text_y * dimension_scale))
+            font = ImageFont.truetype(config.font_file, int(config.font_size * dimension_scale))
+
+            if config.text_color_mode == 0:
+                image = draw_text_xor(image, text, location, font)
+            elif config.text_color_mode == 1:
+                image = draw_text_black_white(image, text, location, font, config.colour_threshold)
+            else:
+                raise NotImplementedError('Text colour mode not implemented')
         else:
-            raise NotImplementedError('Text colour mode not implemented')
+            print("Warning: no date for {}".format(input_filename))
 
-    # Write the output
-    image.save(output_filename)
+        # Write the output
+        image.save(output_filename)
 
 if __name__ == "__main__":
     main(sys.argv)
